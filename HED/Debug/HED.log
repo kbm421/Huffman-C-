@@ -1,2 +1,4 @@
 ﻿  HED.cpp
+c:\users\gubyo\source\repos\hed\hed\hed.cpp(235): warning C4101: 'wirteBuf' :참조되지 않은 지역 변수입니다.
+c:\users\gubyo\source\repos\hed\hed\hed.cpp(238): warning C4101: 'huffBuf' :참조되지 않은 지역 변수입니다.
   HED.vcxproj -> C:\Users\gubyo\source\repos\HED\Debug\HED.exe

@@ -6,12 +6,16 @@
 #include <fstream>
 #include "Node.h"
 #include <iostream>
+#include <time.h>
 
 //for Global Use
 #define BUF_SIZE 100//Incase make it global
 #define NUM_ASCII 256//English and Extended size of ASCII
 int charFreq[NUM_ASCII];//char freq[97] = 10; means 'a's frequency is 10
 char* symCode[NUM_ASCII];//Array to save Huffman Code for each Word.
+string document = "";
+double runtime = 0;
+double instant = 0;
 
 vector<Node*> heap;
 int lastHeapIdx = 0;
@@ -54,39 +58,31 @@ void traverse(Node* cur, char c);
 void performEncoding(char *fName);
 int countNonZeroFreqChar();
 void getCharFreq();
+void printHeap(Node* cur);
+int twoToTen(int input);
 
 //argc: argument count
 //ex: huff.exe -e alice.txt, argc==>3
 //argv: argument variable
-//argv[0]="huff.exe" , argv[1]="-1", argv[2]="alice.txt"
+//argv[0]="huff.exe" , argv[1]="-e", argv[2]="alice.txt"
 
 /*--------------------------------------------------------------------------------------------------------*/
 /*--------------------------------------------------------------------------------------------------------*/
 /*----------------------------------------------main------------------------------------------------------*/
 /*--------------------------------------------------------------------------------------------------------*/
 /*--------------------------------------------------------------------------------------------------------*/
-int main(int argc, char* argv[])
-{
-	//if user put wrong argument.
-	if (argc < 3) {
-		printf("Usage: HED.exe -e fileToEndoce\n");
-		printf("       HED.exe -d fileToDecode\n");
-		return -1;//end the program.
-	}
-
-	if (strcmp(argv[1], "-e") == 0) {
+int main(int argc, char* argv[]) {
+	cout.precision(3);
+	if (argv[1] && strstr(argv[1], ".txt")!=NULL) {
 		// Encoding
-		performEncoding(argv[2]);
-	}
-	else if (strcmp(argv[1], "-d") == 0) {
-		// Decoding
-		//performDecoding(argv[3]);
+		cout << "***HED ENCODER, CS301 CLASS REFERENCE IMPLEMENTATION***" << endl;
+		performEncoding(argv[1]);
+		cout << "TOTAL TIME: " << runtime << " sec"<< endl;
 	}
 	else {
-
+		printf("Usage: HED.exe fileToEndoce.txt\n");
+		return -1;//end the program.
 	}
-
-
 	return 0;
 }
 /*--------------------------------------------------------------------------------------------------------*/
@@ -113,15 +109,23 @@ void performEncoding(char *fName) {
 		cout << "Unable to open, end the program" << endl;
 		return;
 	}
-
+	cout << "Generating frequency data...";
+	clock_t fS = clock();
 	while (fgets(buf, BUF_SIZE, fin) != 0) {
 		int len = strlen(buf);
 		for (int i = 0; i < len; i++) {
 			charFreq[(int)buf[i]]++;
 		}
+		document += buf;
 	}
+	clock_t eS = clock();
+	long msec = eS - fS;
+	instant = (double)msec / 1000;
+	runtime += instant;
+	cout << fixed << instant << " sec" << endl;
 	
-
+	cout << "Building the Huffman tree...";
+	fS = clock();
 	//for debugging
 	//getCharFreq();
 	int size = countNonZeroFreqChar();
@@ -171,7 +175,7 @@ void performEncoding(char *fName) {
 		second = deleteFromHeap();
 		//cout << "looping" << endl;
 
-		if (second == NULL) {//in this case, first is root node of the huffman tree
+		if (second == NULL) {
 			//cout << "HF Tree Done" << endl;
 			break;
 		}
@@ -180,11 +184,26 @@ void performEncoding(char *fName) {
 		addToHeap(newOne);
 		//cout << "add done" << endl;
 	}
+	eS = clock();
+	msec = eS - fS;
+	instant = (double)msec / 1000;
+	runtime += instant;
+	cout << fixed << instant << " sec" << endl;
 
+	//printHeap(first);
+
+	
 	//memset(symCode, NULL, NUM_ASCII * sizeof(int));//Initialize Huffman Code Table
 	//Wirte Huffman Code to buffer;
+	cout << "Generating the Huffman codes...";
+	fS = clock();
 	traverse(first->left, '0');
 	traverse(first->right, '1');
+	eS = clock();
+	msec = eS - fS;
+	instant = (double)msec / 1000;
+	runtime += instant;
+	cout << fixed << instant << " sec" << endl;
 
 	int numOfSym = 0;//number of char's which has frequencies
 	//symCode Debugging(print prompt)
@@ -212,11 +231,14 @@ void performEncoding(char *fName) {
 	fout.open(outputFileName);
 	
 	if (fout.is_open()) {
-		//fwrite(&numOfSym, sizeof(numOfSym), 1, fout);//all counted number of symbols
-		int sumFreq = 0;
+		//fwrite(&numOfSym, sizeof(numOfSym), 1, fout);//all counted number of symbol
 		char wirteBuf[BUF_SIZE];
+		int curBitPos = 0;//to make a size of bit(when to save)
+		int rsize = 0;
+		char huffBuf[BUF_SIZE];
+		cout << "Encoding the document...";
+		fS = clock();
 		for (int i = 0; i < NUM_ASCII; i++) {
-			sumFreq += sizeof(symCode[i])*charFreq[i];
 			if (symCode[i] != 0) {
 				//code + ' ' + char
 				fout << symCode[i];
@@ -227,6 +249,12 @@ void performEncoding(char *fName) {
 				else if ((char)i == '\n') {
 					fout << "newline";
 				}
+				else if ((char)i == '\r') {
+					fout << "return";
+				}
+				else if ((char)i == '\t') {
+					fout << "tap";
+				}
 				else {
 					fout << (char)i;
 				}
@@ -234,40 +262,68 @@ void performEncoding(char *fName) {
 			}
 		}
 		fout << "*****" << endl;
-		fout << sumFreq << endl;
-		for (int i = 0; i < NUM_ASCII; i++) {
-			if (symCode[i] != 0) {
-				wirteBuf[0] = (char)symCode[i];
-				fout.write(wirteBuf, 1);
+		int len = document.length();
+		string codeDoc = "";
+		eS = clock();
+		msec = eS - fS;
+		instant = (double)msec / 1000;
+		runtime += instant;
+		cout << fixed << instant << " sec" << endl;
+
+
+		cout << "Writing output file (" << outputFileName << ".zip301)...";
+		fS = clock();
+		for (int i = 0; i < len; i++) {
+			//char* tempCode = symCode[(int)document[j]];
+			//cout << "Writing to the file " << tempCode << " which converted from '" << document[j] << "' " << endl;
+			//fout << tempCode;
+			codeDoc += symCode[(int)document[i]];
+		}
+		len = codeDoc.length();
+		fout << len << endl;
+		string binary = "";
+		int decimal = 0;
+		int bIdx = 0;
+		unsigned char writeBuf;
+		for (int i = 0; i < len; i++) {
+			if (bIdx < 8) {
+				binary += codeDoc[i];
+				//cout << "Adding " << codeDoc[i] << "to Binary code. index: " << i << endl;
+				bIdx++;
+			}
+			else {
+				decimal = twoToTen(stoi(binary));
+				//cout << "Writing " << decimal << " as a unsigned char* to the File" << endl;
+				writeBuf = decimal;
+				fout.put(writeBuf);
+				binary = "";
+				decimal = 0;
+				bIdx = 0;
+				i--;
 			}
 		}
-	}
-	else {
-		cout << "Unable to write" << outputFileName << endl;
-	}
-	//My version of oupt...way faster!!!!!!!!!!
-	/*
-	FILE* fout = 0;
-	fout = fopen(outputFileName, "wb");//writing bytes.
-	if (fout != 0) {
-		fwrite(&numOfSym, sizeof(numOfSym), 1, fout);//all counted number of symbols
-
-		char wirteBuf[BUF_SIZE];
-		for (int i = 0; i < NUM_ASCII; i++) {
-			if (symCode[i] != 0) {
-				//char + len + code
-				wirteBuf[0] = (char)i;
-				wirteBuf[1] = (char)strlen(symCode[i]);
-				strcpy(&wirteBuf[2], symCode[i]);
-				fwrite(wirteBuf, sizeof(char), 2 * strlen(symCode[i]), fout);
+		string sig = "";
+		if (binary.length() > 0) {
+			for(int i = bIdx; i < 8; i++){
+				sig += '0';
+				//cout << "Adding " << 0 << "to Significant code. index: out" << endl;
+				bIdx++;
 			}
 		}
+		sig += binary;
+		decimal = twoToTen(stoi(sig));
+		//cout << "Writing " << decimal << " as a unsigned char* to the File" << endl;
+		writeBuf = decimal;
+		fout.put(writeBuf);
+		binary = "";
+		decimal = 0;
+		bIdx = 0;
 	}
-	else {
-		cout << "Unable to write" << outputFileName << endl;
-	}
-	*/
-
+	eS = clock();
+	msec = eS - fS;
+	instant = (double)msec / 1000;
+	runtime += instant;
+	cout << fixed << instant << " sec" << endl;
 }
 /*--------------------------------------------------------------------------------------------------------*/
 /*--------------------------------------------------------------------------------------------------------*/
@@ -283,6 +339,21 @@ void performEncoding(char *fName) {
 /*----------------------------------------encoding sub functions------------------------------------------*/
 /*--------------------------------------------------------------------------------------------------------*/
 /*--------------------------------------------------------------------------------------------------------*/
+/*int tenToTwo(int input) {
+
+}*/
+
+int twoToTen(int input) {
+	int result = 0, mul = 1;
+	while (input > 0) {
+		if (input % 2) {
+			result += mul;
+		}
+		mul *= 2;
+		input /= 10;
+	}
+	return result;
+}
 //Writing Huffman Code
 void traverse(Node* cur, char c) {
 	codeBufIdx++;
@@ -293,7 +364,7 @@ void traverse(Node* cur, char c) {
 		//cout << cur->label <<": "<< codebuf << endl;//debugging
 		//Save Huffman Code to symCode
 		char* hufCode = (char *)malloc(strlen(codebuf) + 1);
-		strcpy_s(hufCode, strlen(codebuf) + 1, codebuf);
+		strcpy(hufCode, codebuf);
 		//cout << "copied: " << hufCode << endl;//works well
 		symCode[(int)cur->label] = hufCode;
 		//cout << "saved: " << symCode[(int)cur->label] << endl;//working
@@ -306,6 +377,16 @@ void traverse(Node* cur, char c) {
 	codebuf[codeBufIdx] = 0;
 	codeBufIdx--;
 	return;
+}
+
+void printHeap(Node* cur) {
+	cout << cur << " | " << cur->label << " | " << cur->freq << " | " << cur->left << " | " << cur->right << endl;
+	if (cur->left != NULL) {
+		printHeap(cur->left);
+	}
+	if (cur->right != NULL) {
+		printHeap(cur->right);
+	}
 }
 
 //add Node to heap
@@ -325,7 +406,7 @@ void addToHeap(Node* cur) {
 			heap[currentIdx] = temp;
 
 			currentIdx = parentIdx;
-			parentIdx = currentIdx / 2;
+			parentIdx = currentIdx/2;
 		}
 		else {
 			break;
